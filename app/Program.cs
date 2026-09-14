@@ -133,6 +133,7 @@ namespace GHelper
             Logger.WriteLine($"Tray Icon: {trayIcon.Visible} | {WM_TASKBARCREATED}");
 
             Modes.InitFullSpeed();
+            Modes.InitTabletMode();
             settingsForm.SetContextMenu();
             trayIcon.MouseClick += TrayIcon_MouseClick;
             trayIcon.MouseMove += TrayIcon_MouseMove;
@@ -146,6 +147,7 @@ namespace GHelper
             ScreenControl.InitScreen();
 
             SetAutoModes(init: true);
+            Schedule.ScheduleManager.Init();
 
             powerSettleTimer.Elapsed += OnPowerSettled;
 
@@ -414,6 +416,7 @@ namespace GHelper
             {
                 lastLineStatus = status;
                 Logger.WriteLine($"Power Mode {e.Mode}: {status}");
+                Schedule.ScheduleManager.OnPowerStatusChanged(status);
             }
 
             SchedulePowerCheck();

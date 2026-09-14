@@ -1,4 +1,4 @@
-﻿using GHelper.Ally;
+using GHelper.Ally;
 using GHelper.AnimeMatrix;
 using GHelper.AutoUpdate;
 using GHelper.Battery;
@@ -245,6 +245,7 @@ namespace GHelper
             sliderBattery.ValueChanged += SliderBattery_ValueChanged;
             batteryTimer.Tick += (_, _) => { batteryTimer.Stop(); BatteryControl.SetBatteryChargeLimit(sliderBattery.Value); };
             if (AppConfig.IsChargeLimit6080()) sliderBattery.supportedValues = new() { 60, 65, 70, 75, 80, 100 };
+            labelBatteryTitle.DoubleClick += (_, _) => Schedule.ScheduleManager.OpenConfigFile();
 
             sensorTimer = new System.Timers.Timer(AppConfig.Get("sensor_timer", 1000));
             sensorTimer.Elapsed += OnTimedEvent;
@@ -2045,9 +2046,18 @@ namespace GHelper
             but.BackColor = but.Enabled ? Color.FromArgb(255, but.BackColor) : Color.FromArgb(100, but.BackColor);
         }
 
-        public void VisualiseBatteryTitle(int limit)
+        protected void VisualiseBatteryTitle(int limit)
         {
-            labelBatteryTitle.Text = Properties.Strings.BatteryChargeLimit + ": " + limit.ToString() + "%";
+            string title = Properties.Strings.BatteryChargeLimit + ": " + limit.ToString() + "%";
+            if (Schedule.ScheduleManager.IsEnabled)
+            {
+                string info = Schedule.ScheduleManager.GetNextEventSummary();
+                if (!string.IsNullOrEmpty(info))
+                {
+                    title += " | " + info;
+                }
+            }
+            labelBatteryTitle.Text = title;
         }
 
         public void VisualiseBattery(int limit)
