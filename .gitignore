@@ -3,6 +3,11 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+# Local toolchain and publish
+.dotnet/
+dotnet-install.ps1
+publish/
+
 # User-specific files
 *.rsuser
 *.suo
