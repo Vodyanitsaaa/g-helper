@@ -23,7 +23,7 @@ namespace GHelper.Schedule
         {
             Text = "课表与智能充电设置 - ROG Flow X13";
             ClientSize = new Size(550, 565);
-            StartPosition = FormStartPosition.CenterParent;
+            StartPosition = FormStartPosition.CenterScreen;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
@@ -31,27 +31,32 @@ namespace GHelper.Schedule
             Font = new Font("Segoe UI", 9F);
             AllowDrop = true;
 
-            // Drag and drop support for .ics files
-            DragEnter += (_, e) =>
+            // Universal Drag and Drop support for .ics files
+            void WireDragDrop(Control control)
             {
-                if (e.Data?.GetDataPresent(DataFormats.FileDrop) == true)
-                    e.Effect = DragDropEffects.Copy;
-            };
-            DragDrop += (_, e) =>
-            {
-                if (e.Data?.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
+                control.AllowDrop = true;
+                control.DragEnter += (_, e) =>
                 {
-                    string file = files[0];
-                    if (file.EndsWith(".ics", StringComparison.OrdinalIgnoreCase))
+                    if (e.Data?.GetDataPresent(DataFormats.FileDrop) == true)
+                        e.Effect = DragDropEffects.Copy;
+                };
+                control.DragDrop += (_, e) =>
+                {
+                    if (e.Data?.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
                     {
-                        LoadIcsFile(file);
+                        string file = files[0];
+                        if (file.EndsWith(".ics", StringComparison.OrdinalIgnoreCase))
+                        {
+                            LoadIcsFile(file);
+                        }
+                        else
+                        {
+                            MessageBox.Show(this, "请拖入 .ics 格式的课表日历文件", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        }
                     }
-                    else
-                    {
-                        MessageBox.Show(this, "请拖入 .ics 格式的课表日历文件", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                }
-            };
+                };
+            }
+            WireDragDrop(this);
 
             // Header Section
             var panelTop = new Panel
@@ -121,8 +126,10 @@ namespace GHelper.Schedule
             };
 
             numPrecharge.Size = new Size(85, 28);
-            numPrecharge.Minimum = 15;
+            numPrecharge.Minimum = 0;
             numPrecharge.Maximum = 180;
+            numPrecharge.Value = 45;
+            numPrecharge.Minimum = 15;
             numPrecharge.TextAlign = HorizontalAlignment.Center;
             numPrecharge.Margin = new Padding(0, 3, 10, 3);
             numPrecharge.Anchor = AnchorStyles.Left;
@@ -145,8 +152,10 @@ namespace GHelper.Schedule
             };
 
             numLeave.Size = new Size(85, 28);
-            numLeave.Minimum = 5;
+            numLeave.Minimum = 0;
             numLeave.Maximum = 90;
+            numLeave.Value = 20;
+            numLeave.Minimum = 5;
             numLeave.TextAlign = HorizontalAlignment.Center;
             numLeave.Margin = new Padding(0, 3, 10, 3);
             numLeave.Anchor = AnchorStyles.Left;
@@ -248,6 +257,11 @@ namespace GHelper.Schedule
             };
             btnClose.Click += (_, _) => Close();
 
+            WireDragDrop(panelTop);
+            WireDragDrop(tableTimes);
+            WireDragDrop(panelFile);
+            WireDragDrop(listEvents);
+
             Controls.AddRange(new Control[]
             {
                 panelTop, checkEnabled, labelTimesTitle, tableTimes, labelFileTitle, panelFile, lblEvents, listEvents, labelStatus, btnSave, btnClose
@@ -256,22 +270,29 @@ namespace GHelper.Schedule
 
         private void LoadData()
         {
-            var cfg = ScheduleManager.GetConfig();
-            checkEnabled.Checked = cfg.Enabled;
-            numPrecharge.Value = Math.Max(15, Math.Min(180, cfg.PrechargeMinutes));
-            numLeave.Value = Math.Max(5, Math.Min(90, cfg.LeaveBufferMinutes));
-
-            if (!string.IsNullOrWhiteSpace(cfg.IcsPath) && File.Exists(cfg.IcsPath))
+            try
             {
-                labelIcsPath.Text = "当前 ICS: " + cfg.IcsPath;
-                labelIcsPath.ForeColor = SystemColors.ControlText;
-            }
-            else
-            {
-                labelIcsPath.Text = "当前使用: schedule.json 默认排课";
-            }
+                var cfg = ScheduleManager.GetConfig();
+                checkEnabled.Checked = cfg.Enabled;
+                numPrecharge.Value = Math.Max(numPrecharge.Minimum, Math.Min(numPrecharge.Maximum, cfg.PrechargeMinutes));
+                numLeave.Value = Math.Max(numLeave.Minimum, Math.Min(numLeave.Maximum, cfg.LeaveBufferMinutes));
 
-            RefreshEventsList();
+                if (!string.IsNullOrWhiteSpace(cfg.IcsPath) && File.Exists(cfg.IcsPath))
+                {
+                    labelIcsPath.Text = "当前 ICS: " + cfg.IcsPath;
+                    labelIcsPath.ForeColor = SystemColors.ControlText;
+                }
+                else
+                {
+                    labelIcsPath.Text = "当前使用: schedule.json 默认排课";
+                }
+
+                RefreshEventsList();
+            }
+            catch (Exception ex)
+            {
+                Logger.WriteLine($"[ScheduleForm] LoadData error: {ex.Message}");
+            }
         }
 
         private void RefreshEventsList()
@@ -335,7 +356,9 @@ namespace GHelper.Schedule
                 labelIcsPath.Text = "当前 ICS: " + path;
                 labelIcsPath.ForeColor = SystemColors.ControlText;
 
+                ScheduleManager.CheckSchedule();
                 RefreshEventsList();
+                Program.settingsForm.VisualiseBatteryTitleCurrent();
                 Program.toast.RunToast($"已关联课表: {Path.GetFileName(path)}", ToastIcon.Charger);
             }
             catch (Exception ex)

@@ -1573,6 +1573,7 @@ namespace GHelper
             if (overlayForm != null && overlayForm.Text != "") overlayForm.Close();
             if (mouseSettings != null && mouseSettings.Text != "") mouseSettings.Close();
             if (keyboardSettings != null && keyboardSettings.Text != "") keyboardSettings.Close();
+            if (scheduleForm != null && !scheduleForm.IsDisposed) scheduleForm.Close();
             MemoryHelper.TrimAfter();
         }
 
@@ -1609,6 +1610,7 @@ namespace GHelper
                    (slashForm != null && slashForm.ContainsFocus) ||
                    (handheldForm != null && handheldForm.ContainsFocus) ||
                    (overlayForm != null && overlayForm.ContainsFocus) ||
+                   (scheduleForm != null && !scheduleForm.IsDisposed && scheduleForm.ContainsFocus) ||
                    this.ContainsFocus ||
                    (lostFocusCheck && Math.Abs(DateTimeOffset.Now.ToUnixTimeMilliseconds() - lastLostFocus) < 300);
         }
@@ -2062,16 +2064,21 @@ namespace GHelper
 
         private void ButtonSchedule_Click(object? sender, EventArgs e)
         {
-            if (scheduleForm == null || scheduleForm.Text == "")
+            if (scheduleForm == null || scheduleForm.IsDisposed)
             {
                 scheduleForm = new Schedule.ScheduleForm();
-                scheduleForm.FormClosed += (s, ev) => VisualiseScheduleStatus();
+                scheduleForm.FormClosed += (s, ev) =>
+                {
+                    VisualiseScheduleStatus();
+                    scheduleForm = null;
+                };
                 AddOwnedForm(scheduleForm);
             }
 
             if (scheduleForm.Visible)
             {
                 scheduleForm.Close();
+                scheduleForm = null;
             }
             else
             {
