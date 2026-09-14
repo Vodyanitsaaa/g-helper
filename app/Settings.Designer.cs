@@ -360,21 +360,21 @@ namespace GHelper
             buttonSchedule.BorderRadius = 2;
             buttonSchedule.FlatAppearance.BorderSize = 0;
             buttonSchedule.FlatStyle = FlatStyle.Flat;
-            buttonSchedule.Font = new Font("Segoe UI", 7.5F, FontStyle.Bold);
+            buttonSchedule.Font = new Font("Segoe UI", 7.125F, FontStyle.Bold);
             buttonSchedule.ForeColor = SystemColors.ControlDark;
-            buttonSchedule.Location = new Point(648, 62);
+            buttonSchedule.Location = new Point(650, 62);
             buttonSchedule.Borderless = true;
             buttonSchedule.Margin = new Padding(0);
             buttonSchedule.Name = "buttonSchedule";
             buttonSchedule.Secondary = true;
-            buttonSchedule.Size = new Size(78, 36);
+            buttonSchedule.Size = new Size(71, 36);
             buttonSchedule.TabIndex = 42;
-            buttonSchedule.Text = "📅 课表";
+            buttonSchedule.Text = "课表";
             buttonSchedule.UseVisualStyleBackColor = false;
             // 
             // sliderBattery
             // 
-            sliderBattery.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            sliderBattery.Anchor = AnchorStyles.Top | AnchorStyles.Left;
             sliderBattery.Location = new Point(20, 60);
             sliderBattery.Margin = new Padding(4);
             sliderBattery.Max = 100;

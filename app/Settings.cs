@@ -286,6 +286,9 @@ namespace GHelper
             buttonKeyboard.SizeChanged += (s, e) => AlignFnLock();
             AlignFnLock();
 
+            panelBattery.SizeChanged += (s, e) => AlignBatteryControls();
+            AlignBatteryControls();
+
             if (AppConfig.IsAlly()) tableScreen.ColumnCount = 3;
 
             buttonAutoTDP.Click += ButtonAutoTDP_Click;
@@ -691,6 +694,8 @@ namespace GHelper
 
             Left = Screen.FromControl(this).WorkingArea.Width - 10 - Width;
             Top = Screen.FromControl(this).WorkingArea.Height - 10 - Height;
+
+            AlignBatteryControls();
         }
 
         private void PanelBattery_MouseEnter(object? sender, EventArgs e)
@@ -2117,15 +2122,18 @@ namespace GHelper
             if (InvokeRequired) { Invoke(VisualiseScheduleStatus); return; }
             if (buttonSchedule == null || labelScheduleStatus == null) return;
 
+            buttonSchedule.BackColor = buttonSecond;
             if (Schedule.ScheduleManager.IsEnabled)
             {
-                buttonSchedule.BackColor = colorEco;
-                buttonSchedule.ForeColor = SystemColors.ControlLightLight;
+                buttonSchedule.ForeColor = colorEco;
+                buttonSchedule.Font = new Font(buttonSchedule.Font.FontFamily, 7.125F, FontStyle.Bold);
+                buttonSchedule.AccessibleName = "课表与智能充电 (已启用)";
             }
             else
             {
-                buttonSchedule.BackColor = buttonSecond;
                 buttonSchedule.ForeColor = SystemColors.ControlDark;
+                buttonSchedule.Font = new Font(buttonSchedule.Font.FontFamily, 7.125F, FontStyle.Regular);
+                buttonSchedule.AccessibleName = "课表与智能充电 (未启用)";
             }
             labelScheduleStatus.Text = Schedule.ScheduleManager.GetStatusDetailed();
         }
@@ -2345,6 +2353,33 @@ namespace GHelper
         {
             buttonFnLock.Width = buttonOverlay.Width = (buttonKeyboard.Width - 8) / 2;
             buttonOverlay.Left = buttonFnLock.Left - 8 - buttonOverlay.Width;
+        }
+
+        private void AlignBatteryControls()
+        {
+            if (panelBattery == null || sliderBattery == null || buttonBatteryFull == null || buttonSchedule == null)
+                return;
+
+            int padRight = panelBattery.Padding.Right;
+            int padLeft = panelBattery.Padding.Left;
+            int right = panelBattery.ClientSize.Width - padRight;
+
+            buttonBatteryFull.Left = right - buttonBatteryFull.Width;
+            buttonSchedule.Left = buttonBatteryFull.Left - 8 - buttonSchedule.Width;
+
+            sliderBattery.Left = padLeft;
+            int availableSliderWidth = buttonSchedule.Left - 12 - padLeft;
+            if (availableSliderWidth > 50)
+            {
+                sliderBattery.Width = availableSliderWidth;
+            }
+
+            if (labelScheduleStatus != null)
+            {
+                labelScheduleStatus.Left = padLeft;
+                labelScheduleStatus.Width = panelBattery.ClientSize.Width - padLeft - padRight;
+                labelScheduleStatus.Top = sliderBattery.Bottom + 2;
+            }
         }
 
         public void VisualiseOverlay()

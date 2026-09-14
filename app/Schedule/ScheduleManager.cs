@@ -220,7 +220,7 @@ namespace GHelper.Schedule
 
         public static string GetStatusDetailed()
         {
-            if (!_config.Enabled) return "课表调度: 未启用 (点击 [📅 课表] 导入并开启)";
+            if (!_config.Enabled) return "课表调度: 未启用 (点击 [课表] 导入并开启)";
             var summary = GetNextEventSummary();
             if (string.IsNullOrEmpty(summary)) return "课表调度: 已开启 (今日无日程，维持保养电量)";
             return $"课表调度: {summary}";
