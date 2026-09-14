@@ -476,6 +476,7 @@ namespace GHelper
 
         static void OnExit(object sender, EventArgs e)
         {
+            Logger.WriteLine("Application.ApplicationExit: OnExit called. StackTrace: " + Environment.StackTrace);
             if (trayIcon is not null)
             {
                 trayIcon.Visible = false;
