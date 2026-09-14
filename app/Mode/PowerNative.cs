@@ -1,4 +1,4 @@
-﻿using Microsoft.Win32;
+using Microsoft.Win32;
 using System.Runtime.InteropServices;
 
 namespace GHelper.Mode
@@ -202,6 +202,19 @@ namespace GHelper.Mode
 
             uint status = PowerSetActiveScheme(IntPtr.Zero, new Guid(scheme));
             Logger.WriteLine($"Power Plan {activeScheme} -> {scheme} :" + (status == 0 ? "OK" : status));
+        }
+
+        public static int GetDefaultCPUBoost(int mode)
+        {
+            switch (Modes.GetBase(mode))
+            {
+                case AsusACPI.PerformanceTurbo:
+                    return 1; // Enabled
+                case AsusACPI.PerformanceSilent:
+                    return 0; // Disabled
+                default:
+                    return 1; // Balanced: Enabled
+            }
         }
 
         public static string GetDefaultPowerMode(int mode)

@@ -150,6 +150,9 @@ namespace GHelper.Mode
             // Default power mode
             AppConfig.RemoveMode("powermode");
             PowerNative.SetPowerMode(Modes.GetCurrentBase());
+
+            AppConfig.RemoveMode("auto_boost");
+            PowerNative.SetCPUBoost(PowerNative.GetDefaultCPUBoost(Modes.GetCurrent()));
         }
 
         public void Toast()
@@ -236,9 +239,13 @@ namespace GHelper.Mode
                 if (AppConfig.IsAutoStandbyNetworking()) PowerNative.SetConnectivityInStandby();
             }
 
-            // CPU Boost setting override
-            if (AppConfig.GetMode("auto_boost") != -1)
-                    PowerNative.SetCPUBoost(AppConfig.GetMode("auto_boost"));
+            // CPU Boost setting per mode
+            int targetBoost = AppConfig.GetMode("auto_boost");
+            if (targetBoost < 0)
+                targetBoost = PowerNative.GetDefaultCPUBoost(mode);
+
+            PowerNative.SetCPUBoost(targetBoost);
+            Logger.WriteLine($"[ModeControl] Mode {mode} ({Modes.GetName(mode)}) -> CPU Boost: {targetBoost}");
 
             settings.FansInit();
         }

@@ -1,4 +1,4 @@
-﻿using GHelper.Fan;
+using GHelper.Fan;
 using GHelper.Gpu.NVidia;
 using GHelper.Helpers;
 using GHelper.Mode;
@@ -41,6 +41,7 @@ namespace GHelper
         static int gpuPowerBase = 0;
         static bool isGPUPower => gpuPowerBase > 0;
         static bool clampFanDots = AppConfig.IsClampFanDots();
+        bool _initPowerPlan = false;
 
         public Fans()
         {
@@ -935,24 +936,36 @@ namespace GHelper
 
         public void InitPowerPlan()
         {
-            int boost = PowerNative.GetCPUBoost();
-            if (boost >= 0)
-                comboBoost.SelectedIndex = Math.Min(boost, comboBoost.Items.Count - 1);
+            _initPowerPlan = true;
+            try
+            {
+                int boost = AppConfig.GetMode("auto_boost");
+                if (boost < 0)
+                    boost = PowerNative.GetDefaultCPUBoost(Modes.GetCurrent());
 
-            string powerMode = PowerNative.GetPowerMode();
-            bool batterySaver = PowerNative.GetBatterySaverStatus();
+                if (boost >= 0 && boost < comboBoost.Items.Count)
+                    comboBoost.SelectedIndex = boost;
 
-            comboPowerMode.Enabled = !batterySaver;
+                string powerMode = PowerNative.GetPowerMode();
+                bool batterySaver = PowerNative.GetBatterySaverStatus();
 
-            if (batterySaver)
-                comboPowerMode.SelectedIndex = 0;
-            else
-                comboPowerMode.SelectedValue = powerMode;
+                comboPowerMode.Enabled = !batterySaver;
 
+                if (batterySaver)
+                    comboPowerMode.SelectedIndex = 0;
+                else
+                    comboPowerMode.SelectedValue = powerMode;
+            }
+            finally
+            {
+                _initPowerPlan = false;
+            }
         }
 
         private void ComboPowerMode_Changed(object? sender, EventArgs e)
         {
+            if (_initPowerPlan) return;
+
             string powerMode = (string)comboPowerMode.SelectedValue;
             PowerNative.SetPowerMode(powerMode);
 
@@ -964,11 +977,14 @@ namespace GHelper
 
         private void ComboBoost_Changed(object? sender, EventArgs e)
         {
-            if (AppConfig.GetMode("auto_boost") != comboBoost.SelectedIndex)
-            {
-                PowerNative.SetCPUBoost(comboBoost.SelectedIndex);
-            }
-            AppConfig.SetMode("auto_boost", comboBoost.SelectedIndex);
+            if (_initPowerPlan) return;
+
+            int selected = comboBoost.SelectedIndex;
+            if (selected < 0) return;
+
+            AppConfig.SetMode("auto_boost", selected);
+            PowerNative.SetCPUBoost(selected);
+            Logger.WriteLine($"[Fans] Mode {Modes.GetCurrent()} ({Modes.GetCurrentName()}) changed CPU Boost -> {selected}");
         }
 
         private void CheckApplyPower_Click(object? sender, EventArgs e)
@@ -1335,6 +1351,7 @@ namespace GHelper
 
             AdvancedScroll();
             AppConfig.RemoveMode("cpu_temp");
+            AppConfig.RemoveMode("auto_boost");
 
             modeControl.ResetPerformanceMode();
 
