@@ -84,6 +84,40 @@ namespace GHelper.Mode
             SetRyzenPower();
         }
 
+        private static int _previousModeBeforeTablet = -1;
+        public static bool IsTabletModeActive { get; private set; } = false;
+
+        public static void CheckTabletState(bool isTabletOrTent)
+        {
+            if (isTabletOrTent)
+            {
+                if (!IsTabletModeActive)
+                {
+                    int current = Modes.GetCurrent();
+                    if (current != Modes.Tablet)
+                    {
+                        _previousModeBeforeTablet = current;
+                    }
+                    IsTabletModeActive = true;
+                    Logger.WriteLine($"[TabletMode] Transition -> Tablet/Tent active. Saved previous mode: {_previousModeBeforeTablet} ({Modes.GetName(_previousModeBeforeTablet)})");
+                    Program.modeControl.SetPerformanceMode(Modes.Tablet, notify: true);
+                }
+            }
+            else
+            {
+                if (IsTabletModeActive)
+                {
+                    IsTabletModeActive = false;
+                    int restore = (_previousModeBeforeTablet >= 0 && _previousModeBeforeTablet != Modes.Tablet)
+                        ? _previousModeBeforeTablet
+                        : AsusACPI.PerformanceBalanced;
+                    Logger.WriteLine($"[TabletMode] Transition -> Exited Tablet/Tent. Restoring previous mode: {restore} ({Modes.GetName(restore)})");
+                    _previousModeBeforeTablet = -1;
+                    Program.modeControl.SetPerformanceMode(restore, notify: true);
+                }
+            }
+        }
+
         public void WaitForApply()
         {
             try { _modeTask.Wait(5000); } catch { }
@@ -91,6 +125,12 @@ namespace GHelper.Mode
 
         public void AutoPerformance(bool powerChanged = false)
         {
+            if (IsTabletModeActive)
+            {
+                SetPerformanceMode(Modes.Tablet, powerChanged);
+                return;
+            }
+
             int mode = AppConfig.Get("performance_" + Program.PerformanceKey());
             Logger.WriteLine($"{Program.currentSource} Performance Mode: {Modes.GetName(mode == -1 ? Modes.GetCurrent() : mode)}");
 

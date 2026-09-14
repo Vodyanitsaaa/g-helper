@@ -854,6 +854,16 @@ namespace GHelper.Input
             }
         }
 
+        public static void UpdateTabletPowerMode()
+        {
+            if (!AppConfig.HasTabletMode()) return;
+            bool tabletState = Program.acpi.DeviceGet(AsusACPI.TabletState) > 0;
+            int tentState = GetTentState();
+            bool isConvertible = tabletState || (tentState > 0);
+
+            ModeControl.CheckTabletState(isConvertible);
+        }
+
         public static void TabletMode()
         {
             if (AppConfig.Is("disable_tablet")) return;
@@ -866,6 +876,8 @@ namespace GHelper.Input
 
             if (slateState >= 0) SetSlateMode(slateState);
             if (tabletState && touchpadState || !tabletState && !touchpadState) ToggleTouchpad();
+
+            UpdateTabletPowerMode();
         }
 
         static int GetTentState()
@@ -883,6 +895,8 @@ namespace GHelper.Input
             if (tentState < 0) return;
             tentMode = tentState > 0;
             Aura.ApplyBrightness(tentMode ? 0 : GetBacklight(), "Tent");
+
+            UpdateTabletPowerMode();
         }
 
         static void HandleEvent(int EventID)
@@ -1105,7 +1119,11 @@ namespace GHelper.Input
 
         public static void AutoKeyboard()
         {
-            if (AppConfig.HasTabletMode()) TabletMode();
+            if (AppConfig.HasTabletMode())
+            {
+                TabletMode();
+                TentMode();
+            }
             if (lidClose)
             {
                 Logger.WriteLine("Skipping Backlight Init: Lid Closed");

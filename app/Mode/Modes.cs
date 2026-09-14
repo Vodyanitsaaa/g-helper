@@ -1,4 +1,4 @@
-﻿namespace GHelper.Mode
+namespace GHelper.Mode
 {
     internal class Modes
     {
@@ -37,6 +37,23 @@
 
         const int maxModes = 20;
 
+        public const int Tablet = 3;
+
+        public static void InitTabletMode()
+        {
+            if (AppConfig.HasTabletMode() && !Exists(Tablet))
+            {
+                AppConfig.Set("mode_base_" + Tablet, AsusACPI.PerformanceSilent);
+                AppConfig.Set("mode_name_" + Tablet, "平板模式");
+                AppConfig.Set("auto_boost_" + Tablet, 0); // 关闭激进睿频，保证平板手持温凉
+                AppConfig.Set("limit_slow_" + Tablet, 15);
+                AppConfig.Set("limit_fast_" + Tablet, 18);
+                AppConfig.Set("limit_total_" + Tablet, 15);
+                AppConfig.Set("auto_apply_power_" + Tablet, 1);
+                Logger.WriteLine("[Modes] Flow X13 Tablet Mode profile initialized (Silent base, 15W, Boost Off)");
+            }
+        }
+
         public static Dictionary<int, string> GetDictonary()
         {
             Dictionary<int, string> modes = new Dictionary<int, string>
@@ -57,7 +74,7 @@
         public static List<int> GetList()
         {
             List<int> modes = new() { 2, 0, 1 };
-            for (int i = 3; i < maxModes; i++)
+            for (int i = 4; i < maxModes; i++)
             {
                 if (Exists(i)) modes.Add(i);
             }
@@ -77,12 +94,12 @@
         {
             int currentMode = GetCurrent();
 
-            for (int i = 3; i < maxModes; i++)
+            for (int i = 4; i < maxModes; i++)
             {
                 if (Exists(i)) continue;
 
                 AppConfig.Set("mode_base_" + i, GetCurrentBase());
-                AppConfig.Set("mode_name_" + i, "Custom " + (i - 2));
+                AppConfig.Set("mode_name_" + i, "Custom " + (i - 3));
 
                 if (Exists(currentMode))
                 {
@@ -114,10 +131,10 @@
             Logger.WriteLine($"VivoBookMode: {vivoMode} (0x{vivoMode:X})");
             if ((vivoMode & 0x40000) == 0) return;
 
-            for (int i = 3; i < maxModes; i++)
+            for (int i = 4; i < maxModes; i++)
                 if (GetBase(i) == AsusACPI.PerformanceFullSpeed) return;
 
-            for (int i = 3; i < maxModes; i++)
+            for (int i = 4; i < maxModes; i++)
             {
                 if (Exists(i)) continue;
                 AppConfig.Set("mode_base_" + i, AsusACPI.PerformanceFullSpeed);
