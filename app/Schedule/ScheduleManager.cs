@@ -328,69 +328,79 @@ namespace GHelper.Schedule
         private static List<CalendarEvent> ParseIcsEvents(string filePath, DateTime targetDate)
         {
             var results = new List<CalendarEvent>();
-            string[] rawLines = File.ReadAllLines(filePath);
-            List<string> lines = new();
+            if (!File.Exists(filePath)) return results;
 
-            // Handle ICS line continuations (starting with space or tab)
-            foreach (var rawLine in rawLines)
+            try
             {
-                if ((rawLine.StartsWith(" ") || rawLine.StartsWith("\t")) && lines.Count > 0)
+                string[] rawLines = File.ReadAllLines(filePath);
+                List<string> lines = new(rawLines.Length);
+
+                // Handle ICS line continuations (starting with space or tab)
+                foreach (var rawLine in rawLines)
                 {
-                    lines[^1] += rawLine[1..];
+                    if (string.IsNullOrEmpty(rawLine)) continue;
+                    if ((rawLine.StartsWith(' ') || rawLine.StartsWith('\t')) && lines.Count > 0)
+                    {
+                        lines[^1] += rawLine[1..];
+                    }
+                    else
+                    {
+                        lines.Add(rawLine.TrimEnd('\r', '\n'));
+                    }
                 }
-                else
+
+                bool inEvent = false;
+                string summary = "";
+                string dtStart = "";
+                string dtEnd = "";
+                string rrule = "";
+
+                foreach (var line in lines)
                 {
-                    lines.Add(rawLine.TrimEnd('\r', '\n'));
+                    if (line.Equals("BEGIN:VEVENT", StringComparison.OrdinalIgnoreCase))
+                    {
+                        inEvent = true;
+                        summary = "";
+                        dtStart = "";
+                        dtEnd = "";
+                        rrule = "";
+                    }
+                    else if (line.Equals("END:VEVENT", StringComparison.OrdinalIgnoreCase))
+                    {
+                        if (inEvent)
+                        {
+                            ProcessIcsEvent(summary, dtStart, dtEnd, rrule, targetDate, results);
+                            inEvent = false;
+                        }
+                    }
+                    else if (inEvent)
+                    {
+                        if (line.StartsWith("SUMMARY", StringComparison.OrdinalIgnoreCase))
+                        {
+                            int idx = line.IndexOf(':');
+                            if (idx >= 0) summary = line[(idx + 1)..].Trim();
+                        }
+                        else if (line.StartsWith("DTSTART", StringComparison.OrdinalIgnoreCase))
+                        {
+                            int idx = line.IndexOf(':');
+                            if (idx >= 0) dtStart = line[(idx + 1)..].Trim();
+                        }
+                        else if (line.StartsWith("DTEND", StringComparison.OrdinalIgnoreCase))
+                        {
+                            int idx = line.IndexOf(':');
+                            if (idx >= 0) dtEnd = line[(idx + 1)..].Trim();
+                        }
+                        else if (line.StartsWith("RRULE", StringComparison.OrdinalIgnoreCase))
+                        {
+                            int idx = line.IndexOf(':');
+                            if (idx >= 0) rrule = line[(idx + 1)..].Trim();
+                        }
+                    }
                 }
             }
-
-            bool inEvent = false;
-            string summary = "";
-            string dtStart = "";
-            string dtEnd = "";
-            string rrule = "";
-
-            foreach (var line in lines)
+            catch (Exception ex)
             {
-                if (line.Equals("BEGIN:VEVENT", StringComparison.OrdinalIgnoreCase))
-                {
-                    inEvent = true;
-                    summary = "";
-                    dtStart = "";
-                    dtEnd = "";
-                    rrule = "";
-                }
-                else if (line.Equals("END:VEVENT", StringComparison.OrdinalIgnoreCase))
-                {
-                    if (inEvent)
-                    {
-                        ProcessIcsEvent(summary, dtStart, dtEnd, rrule, targetDate, results);
-                        inEvent = false;
-                    }
-                }
-                else if (inEvent)
-                {
-                    if (line.StartsWith("SUMMARY", StringComparison.OrdinalIgnoreCase))
-                    {
-                        int idx = line.IndexOf(':');
-                        if (idx >= 0) summary = line[(idx + 1)..].Trim();
-                    }
-                    else if (line.StartsWith("DTSTART", StringComparison.OrdinalIgnoreCase))
-                    {
-                        int idx = line.IndexOf(':');
-                        if (idx >= 0) dtStart = line[(idx + 1)..].Trim();
-                    }
-                    else if (line.StartsWith("DTEND", StringComparison.OrdinalIgnoreCase))
-                    {
-                        int idx = line.IndexOf(':');
-                        if (idx >= 0) dtEnd = line[(idx + 1)..].Trim();
-                    }
-                    else if (line.StartsWith("RRULE", StringComparison.OrdinalIgnoreCase))
-                    {
-                        int idx = line.IndexOf(':');
-                        if (idx >= 0) rrule = line[(idx + 1)..].Trim();
-                    }
-                }
+                Logger.WriteLine($"[ScheduleManager] ParseIcsEvents error: {ex.Message}");
             }
 
             return results;
@@ -398,41 +408,80 @@ namespace GHelper.Schedule
 
         private static void ProcessIcsEvent(string summary, string dtStart, string dtEnd, string rrule, DateTime targetDate, List<CalendarEvent> results)
         {
-            if (!TryParseIcsDateTime(dtStart, out DateTime start)) return;
-            if (!TryParseIcsDateTime(dtEnd, out DateTime end)) end = start.AddMinutes(90);
-
-            bool occursToday = false;
-
-            if (start.Date == targetDate.Date)
+            try
             {
-                occursToday = true;
-            }
-            else if (!string.IsNullOrEmpty(rrule) && rrule.Contains("FREQ=WEEKLY", StringComparison.OrdinalIgnoreCase))
-            {
-                // Weekly recurrence
-                if (start.DayOfWeek == targetDate.DayOfWeek && targetDate >= start.Date)
+                if (!TryParseIcsDateTime(dtStart, out DateTime start)) return;
+                if (!TryParseIcsDateTime(dtEnd, out DateTime end)) end = start.AddMinutes(90);
+
+                bool occursToday = false;
+
+                if (start.Date == targetDate.Date)
                 {
-                    // Check UNTIL if present
-                    var match = Regex.Match(rrule, @"UNTIL=(\d{8}(?:T\d{6}Z?)?)", RegexOptions.IgnoreCase);
-                    if (match.Success && TryParseIcsDateTime(match.Groups[1].Value, out DateTime untilDate))
+                    occursToday = true;
+                }
+                else if (!string.IsNullOrEmpty(rrule) && rrule.Contains("FREQ=WEEKLY", StringComparison.OrdinalIgnoreCase))
+                {
+                    // Check if recurring on this day of week
+                    bool dayMatches = false;
+
+                    // Check BYDAY if specified (e.g. BYDAY=MO,WE)
+                    var byDayMatch = Regex.Match(rrule, @"BYDAY=([A-Z,]+)", RegexOptions.IgnoreCase);
+                    if (byDayMatch.Success)
                     {
-                        if (targetDate.Date <= untilDate.Date) occursToday = true;
+                        string days = byDayMatch.Groups[1].Value.ToUpperInvariant();
+                        string targetCode = targetDate.DayOfWeek switch
+                        {
+                            DayOfWeek.Monday => "MO",
+                            DayOfWeek.Tuesday => "TU",
+                            DayOfWeek.Wednesday => "WE",
+                            DayOfWeek.Thursday => "TH",
+                            DayOfWeek.Friday => "FR",
+                            DayOfWeek.Saturday => "SA",
+                            DayOfWeek.Sunday => "SU",
+                            _ => ""
+                        };
+                        dayMatches = !string.IsNullOrEmpty(targetCode) && days.Contains(targetCode);
                     }
                     else
                     {
-                        occursToday = true;
+                        dayMatches = (start.DayOfWeek == targetDate.DayOfWeek);
+                    }
+
+                    if (dayMatches && targetDate.Date >= start.Date)
+                    {
+                        // Check INTERVAL if bi-weekly
+                        var intervalMatch = Regex.Match(rrule, @"INTERVAL=(\d+)", RegexOptions.IgnoreCase);
+                        int interval = intervalMatch.Success && int.TryParse(intervalMatch.Groups[1].Value, out int inv) ? inv : 1;
+                        int weeksDiff = (int)((targetDate.Date - start.Date).TotalDays / 7);
+                        if (interval <= 1 || (weeksDiff % interval == 0))
+                        {
+                            // Check UNTIL if present
+                            var untilMatch = Regex.Match(rrule, @"UNTIL=(\d{8}(?:T\d{6}Z?)?)", RegexOptions.IgnoreCase);
+                            if (untilMatch.Success && TryParseIcsDateTime(untilMatch.Groups[1].Value, out DateTime untilDate))
+                            {
+                                if (targetDate.Date <= untilDate.Date) occursToday = true;
+                            }
+                            else
+                            {
+                                occursToday = true;
+                            }
+                        }
                     }
                 }
-            }
 
-            if (occursToday)
-            {
-                results.Add(new CalendarEvent
+                if (occursToday)
                 {
-                    StartTime = targetDate.Date + start.TimeOfDay,
-                    EndTime = targetDate.Date + end.TimeOfDay,
-                    Title = string.IsNullOrWhiteSpace(summary) ? "日程事项" : summary
-                });
+                    results.Add(new CalendarEvent
+                    {
+                        StartTime = targetDate.Date + start.TimeOfDay,
+                        EndTime = targetDate.Date + end.TimeOfDay,
+                        Title = string.IsNullOrWhiteSpace(summary) ? "日程事项" : summary
+                    });
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.WriteLine($"[ScheduleManager] ProcessIcsEvent error: {ex.Message}");
             }
         }
 

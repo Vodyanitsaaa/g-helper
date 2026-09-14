@@ -6,8 +6,8 @@ namespace GHelper.Schedule
     public class ScheduleForm : RForm
     {
         private CheckBox checkEnabled = new();
-        private NumericUpDownWithUnit numPrecharge = new();
-        private NumericUpDownWithUnit numLeave = new();
+        private RNumericUpDown numPrecharge = new();
+        private RNumericUpDown numLeave = new();
         private Label labelIcsPath = new();
         private ListBox listEvents = new();
         private Label labelStatus = new();
@@ -34,7 +34,7 @@ namespace GHelper.Schedule
             var panelTop = new Panel
             {
                 Location = new Point(20, 16),
-                Size = new Size(500, 48),
+                Size = new Size(500, 50),
                 BackColor = Color.Transparent
             };
 
@@ -52,7 +52,7 @@ namespace GHelper.Schedule
                 Font = new Font("Segoe UI", 8.25F),
                 ForeColor = SystemColors.GrayText,
                 AutoSize = true,
-                Location = new Point(0, 24)
+                Location = new Point(0, 26)
             };
 
             panelTop.Controls.Add(labelHeader);
@@ -61,94 +61,111 @@ namespace GHelper.Schedule
             // Enable Switch
             checkEnabled.Text = " 启用智能课表感知与满电调度";
             checkEnabled.Font = new Font("Segoe UI", 9.25F, FontStyle.Bold);
-            checkEnabled.Location = new Point(20, 72);
-            checkEnabled.Size = new Size(500, 28);
+            checkEnabled.Location = new Point(20, 74);
+            checkEnabled.Size = new Size(500, 30);
             checkEnabled.UseVisualStyleBackColor = true;
 
-            // Timing Section
-            var panelTimes = new Panel
-            {
-                Location = new Point(20, 108),
-                Size = new Size(500, 106),
-                BackColor = Color.Transparent
-            };
-
+            // Timing Section Title
             var labelTimesTitle = new Label
             {
                 Text = "时间策略配置",
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold),
-                Location = new Point(0, 0),
+                Location = new Point(20, 114),
                 AutoSize = true
             };
+
+            // Timing TableLayoutPanel: completely immune to DPI and font overlap
+            var tableTimes = new TableLayoutPanel
+            {
+                Location = new Point(20, 138),
+                Size = new Size(500, 76),
+                ColumnCount = 3,
+                RowCount = 2,
+                BackColor = Color.Transparent
+            };
+            tableTimes.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            tableTimes.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 95F));
+            tableTimes.ColumnStyles.Add(new ColumnStyle(SizeType.AutoSize));
+            tableTimes.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
+            tableTimes.RowStyles.Add(new RowStyle(SizeType.Percent, 50F));
 
             var lblPre = new Label
             {
                 Text = "离电前充电时间:",
-                Location = new Point(12, 32),
-                AutoSize = true
+                AutoSize = true,
+                Anchor = AnchorStyles.Left,
+                Margin = new Padding(0, 6, 12, 6)
             };
 
-            numPrecharge.Location = new Point(124, 27);
-            numPrecharge.Size = new Size(115, 32);
+            numPrecharge.Size = new Size(85, 28);
             numPrecharge.Minimum = 15;
             numPrecharge.Maximum = 180;
-            numPrecharge.Unit = " 分钟";
+            numPrecharge.TextAlign = HorizontalAlignment.Center;
+            numPrecharge.Margin = new Padding(0, 3, 10, 3);
+            numPrecharge.Anchor = AnchorStyles.Left;
 
             var lblPreUnit = new Label
             {
-                Text = "提前开始充满至 100%",
-                Location = new Point(248, 32),
+                Text = "分钟（动身前将电池充满至 100%）",
+                AutoSize = true,
+                Anchor = AnchorStyles.Left,
                 ForeColor = SystemColors.GrayText,
-                AutoSize = true
+                Margin = new Padding(0, 6, 0, 6)
             };
 
             var lblLeave = new Label
             {
                 Text = "上课前出门提前:",
-                Location = new Point(12, 70),
-                AutoSize = true
+                AutoSize = true,
+                Anchor = AnchorStyles.Left,
+                Margin = new Padding(0, 6, 12, 6)
             };
 
-            numLeave.Location = new Point(124, 65);
-            numLeave.Size = new Size(115, 32);
+            numLeave.Size = new Size(85, 28);
             numLeave.Minimum = 5;
             numLeave.Maximum = 90;
-            numLeave.Unit = " 分钟";
+            numLeave.TextAlign = HorizontalAlignment.Center;
+            numLeave.Margin = new Padding(0, 3, 10, 3);
+            numLeave.Anchor = AnchorStyles.Left;
 
             var lblLeaveUnit = new Label
             {
-                Text = "预感动身前往教室时间",
-                Location = new Point(248, 70),
+                Text = "分钟（预留动身前往教室的时间）",
+                AutoSize = true,
+                Anchor = AnchorStyles.Left,
                 ForeColor = SystemColors.GrayText,
-                AutoSize = true
+                Margin = new Padding(0, 6, 0, 6)
             };
 
-            panelTimes.Controls.AddRange(new Control[]
-            {
-                labelTimesTitle, lblPre, numPrecharge, lblPreUnit, lblLeave, numLeave, lblLeaveUnit
-            });
+            tableTimes.Controls.Add(lblPre, 0, 0);
+            tableTimes.Controls.Add(numPrecharge, 1, 0);
+            tableTimes.Controls.Add(lblPreUnit, 2, 0);
 
-            // Data Source Section
-            var panelFile = new Panel
-            {
-                Location = new Point(20, 222),
-                Size = new Size(500, 100),
-                BackColor = Color.Transparent
-            };
+            tableTimes.Controls.Add(lblLeave, 0, 1);
+            tableTimes.Controls.Add(numLeave, 1, 1);
+            tableTimes.Controls.Add(lblLeaveUnit, 2, 1);
 
+            // Data Source Section Title
             var labelFileTitle = new Label
             {
                 Text = "课程表数据源（支持 ICS 日历或 JSON 周排课）",
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold),
-                Location = new Point(0, 0),
+                Location = new Point(20, 224),
                 AutoSize = true
+            };
+
+            var panelFile = new Panel
+            {
+                Location = new Point(20, 248),
+                Size = new Size(500, 74),
+                BackColor = Color.Transparent
             };
 
             var btnIcs = new RButton
             {
                 Text = "选择 .ics 课表文件...",
-                Location = new Point(8, 26),
-                Size = new Size(175, 34),
+                Location = new Point(0, 0),
+                Size = new Size(180, 34),
                 Secondary = true
             };
             btnIcs.Click += BtnIcs_Click;
@@ -156,29 +173,29 @@ namespace GHelper.Schedule
             var btnJson = new RButton
             {
                 Text = "编辑 schedule.json (周排课)",
-                Location = new Point(195, 26),
+                Location = new Point(195, 0),
                 Size = new Size(210, 34),
                 Secondary = true
             };
             btnJson.Click += (_, _) => ScheduleManager.OpenConfigFile();
 
             labelIcsPath.Text = "当前使用: schedule.json 默认排课";
-            labelIcsPath.Location = new Point(10, 68);
-            labelIcsPath.Size = new Size(480, 24);
+            labelIcsPath.Location = new Point(0, 44);
+            labelIcsPath.Size = new Size(500, 24);
             labelIcsPath.ForeColor = SystemColors.GrayText;
 
-            panelFile.Controls.AddRange(new Control[] { labelFileTitle, btnIcs, btnJson, labelIcsPath });
+            panelFile.Controls.AddRange(new Control[] { btnIcs, btnJson, labelIcsPath });
 
             // Today Events Preview Section
             var lblEvents = new Label
             {
                 Text = "今日已解析到的课程/日程预览：",
-                Location = new Point(20, 330),
+                Location = new Point(20, 332),
                 AutoSize = true,
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold)
             };
 
-            listEvents.Location = new Point(20, 355);
+            listEvents.Location = new Point(20, 356);
             listEvents.Size = new Size(500, 95);
             listEvents.Font = new Font("Segoe UI", 8.75F);
             listEvents.BorderStyle = BorderStyle.FixedSingle;
@@ -194,7 +211,7 @@ namespace GHelper.Schedule
             var btnSave = new RButton
             {
                 Text = "保存并应用",
-                Location = new Point(285, 498),
+                Location = new Point(285, 502),
                 Size = new Size(115, 36)
             };
             btnSave.Click += BtnSave_Click;
@@ -202,7 +219,7 @@ namespace GHelper.Schedule
             var btnClose = new RButton
             {
                 Text = "关闭",
-                Location = new Point(410, 498),
+                Location = new Point(410, 502),
                 Size = new Size(110, 36),
                 Secondary = true
             };
@@ -210,7 +227,7 @@ namespace GHelper.Schedule
 
             Controls.AddRange(new Control[]
             {
-                panelTop, checkEnabled, panelTimes, panelFile, lblEvents, listEvents, labelStatus, btnSave, btnClose
+                panelTop, checkEnabled, labelTimesTitle, tableTimes, labelFileTitle, panelFile, lblEvents, listEvents, labelStatus, btnSave, btnClose
             });
         }
 
@@ -237,52 +254,104 @@ namespace GHelper.Schedule
         private void RefreshEventsList()
         {
             listEvents.Items.Clear();
-            var list = ScheduleManager.GetTodayEventsDisplayList();
-            if (list.Count == 0)
+            try
             {
-                listEvents.Items.Add("今日暂无待上课程（维持 80% 电池保养）");
-            }
-            else
-            {
-                foreach (var item in list)
+                var list = ScheduleManager.GetTodayEventsDisplayList();
+                if (list.Count == 0)
                 {
-                    listEvents.Items.Add(item);
+                    listEvents.Items.Add("今日暂无待上课程（维持 80% 电池保养）");
                 }
+                else
+                {
+                    foreach (var item in list)
+                    {
+                        listEvents.Items.Add(item);
+                    }
+                }
+                labelStatus.Text = ScheduleManager.GetStatusDetailed();
             }
-            labelStatus.Text = ScheduleManager.GetStatusDetailed();
+            catch (Exception ex)
+            {
+                Logger.WriteLine($"[ScheduleForm] RefreshEventsList error: {ex.Message}");
+                listEvents.Items.Add($"解析日程列表异常: {ex.Message}");
+            }
         }
 
         private void BtnIcs_Click(object? sender, EventArgs e)
         {
-            using var ofd = new OpenFileDialog
-            {
-                Title = "选择课程表/日历 .ics 文件",
-                Filter = "iCalendar 日历文件 (*.ics)|*.ics|所有文件 (*.*)|*.*"
-            };
+            string? selectedFile = null;
 
-            if (ofd.ShowDialog() == DialogResult.OK)
+            try
             {
-                var cfg = ScheduleManager.GetConfig();
-                cfg.IcsPath = ofd.FileName;
-                ScheduleManager.SaveConfig(cfg);
-                labelIcsPath.Text = "当前 ICS: " + ofd.FileName;
-                labelIcsPath.ForeColor = SystemColors.ControlText;
-                RefreshEventsList();
+                // Run OpenFileDialog in an isolated STA thread to prevent Windows Shell COM deadlocks
+                Thread t = new Thread(() =>
+                {
+                    using var ofd = new OpenFileDialog
+                    {
+                        Title = "选择课程表/日历 .ics 文件",
+                        Filter = "iCalendar 日历文件 (*.ics)|*.ics|所有文件 (*.*)|*.*",
+                        AutoUpgradeEnabled = false,
+                        RestoreDirectory = true
+                    };
+
+                    if (ofd.ShowDialog() == DialogResult.OK)
+                    {
+                        selectedFile = ofd.FileName;
+                    }
+                });
+
+                t.SetApartmentState(ApartmentState.STA);
+                t.Start();
+                t.Join();
+            }
+            catch (Exception ex)
+            {
+                Logger.WriteLine($"[ScheduleForm] OpenFileDialog exception: {ex.Message}");
+                MessageBox.Show(this, $"打开文件选择窗口失败: {ex.Message}", "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (!string.IsNullOrEmpty(selectedFile) && File.Exists(selectedFile))
+            {
+                try
+                {
+                    var cfg = ScheduleManager.GetConfig();
+                    cfg.IcsPath = selectedFile;
+                    ScheduleManager.SaveConfig(cfg);
+                    labelIcsPath.Text = "当前 ICS: " + selectedFile;
+                    labelIcsPath.ForeColor = SystemColors.ControlText;
+
+                    RefreshEventsList();
+                    Program.toast.RunToast($"已关联课表文件: {Path.GetFileName(selectedFile)}", ToastIcon.Charger);
+                }
+                catch (Exception ex)
+                {
+                    Logger.WriteLine($"[ScheduleForm] Load selected ICS error: {ex.Message}");
+                    MessageBox.Show(this, $"解析所选课表文件失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
             }
         }
 
         private void BtnSave_Click(object? sender, EventArgs e)
         {
-            var cfg = ScheduleManager.GetConfig();
-            cfg.Enabled = checkEnabled.Checked;
-            cfg.PrechargeMinutes = (int)numPrecharge.Value;
-            cfg.LeaveBufferMinutes = (int)numLeave.Value;
-            ScheduleManager.SaveConfig(cfg);
-            ScheduleManager.CheckSchedule();
-            RefreshEventsList();
-            Program.settingsForm.VisualiseBatteryTitleCurrent();
-            Program.toast.RunToast("课程表与智能充电设置已更新！", ToastIcon.Charger);
-            Close();
+            try
+            {
+                var cfg = ScheduleManager.GetConfig();
+                cfg.Enabled = checkEnabled.Checked;
+                cfg.PrechargeMinutes = (int)numPrecharge.Value;
+                cfg.LeaveBufferMinutes = (int)numLeave.Value;
+                ScheduleManager.SaveConfig(cfg);
+                ScheduleManager.CheckSchedule();
+                RefreshEventsList();
+                Program.settingsForm.VisualiseBatteryTitleCurrent();
+                Program.toast.RunToast("课程表与智能充电设置已更新！", ToastIcon.Charger);
+                Close();
+            }
+            catch (Exception ex)
+            {
+                Logger.WriteLine($"[ScheduleForm] BtnSave_Click error: {ex.Message}");
+                MessageBox.Show(this, $"保存配置失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
         }
     }
 }
