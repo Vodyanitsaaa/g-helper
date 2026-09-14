@@ -149,6 +149,7 @@ namespace GHelper
 
             SetAutoModes(init: true);
             Schedule.ScheduleManager.Init();
+            settingsForm.VisualiseScheduleStatus();
 
             powerSettleTimer.Elapsed += OnPowerSettled;
 
@@ -253,6 +254,7 @@ namespace GHelper
                     if (!wasLocked) return;
                     if (Math.Abs(DateTimeOffset.Now.ToUnixTimeMilliseconds() - lastAuto) < 10000) return;
                     modeControl.AutoCPUTemp();
+                    Schedule.ScheduleManager.CheckSchedule(force: true);
                 });
             }
             if (e.Reason == SessionSwitchReason.SessionLock)

@@ -37,13 +37,14 @@ namespace GHelper.Schedule
 
         private static ScheduleConfig _config = new();
         private static System.Timers.Timer? _timer;
-        private static bool _isScheduleCharged = false;
         private static string _currentEventTitle = "";
+        private static string _cachedStatus = "";
+        private static bool _inPrechargeWindow = false;
         private static DateTime _lastLoadedTime = DateTime.MinValue;
 
         public static bool IsEnabled => _config.Enabled;
         public static string CurrentEventTitle => _currentEventTitle;
-        public static bool IsScheduleCharging => _isScheduleCharged;
+        public static bool IsScheduleCharging => _inPrechargeWindow;
 
         public static void Init()
         {
@@ -54,6 +55,7 @@ namespace GHelper.Schedule
             _timer.AutoReset = true;
             _timer.Start();
 
+            CheckSchedule(force: true);
             Logger.WriteLine($"[ScheduleManager] Initialized. Enabled: {_config.Enabled}, Precharge: {_config.PrechargeMinutes}m, LeaveBuffer: {_config.LeaveBufferMinutes}m");
         }
 
@@ -125,88 +127,125 @@ namespace GHelper.Schedule
         {
             _config.Enabled = !_config.Enabled;
             SaveConfig();
-            if (!_config.Enabled && _isScheduleCharged)
-            {
-                _isScheduleCharged = false;
-                BatteryControl.SetBatteryChargeLimit();
-            }
+            CheckSchedule(force: true);
         }
 
         public static void OnPowerStatusChanged(PowerLineStatus status)
         {
-            // When disconnected from AC, reset the schedule charge full flag so when user plugs back in later,
-            // the limit reverts to normal (80%)
-            if (status != PowerLineStatus.Online)
-            {
-                if (_isScheduleCharged || BatteryControl.chargeFull)
-                {
-                    Logger.WriteLine("[ScheduleManager] Disconnected from AC power. Resetting chargeFull state to return to 80% on next connection.");
-                    BatteryControl.chargeFull = false;
-                    _isScheduleCharged = false;
-                }
-            }
-            else
-            {
-                // Plugged back in: check if we should charge or maintain 80%
-                CheckSchedule();
-            }
+            Logger.WriteLine($"[ScheduleManager] Power status changed: {status}. Re-evaluating schedule charging state.");
+            CheckSchedule(force: true);
         }
 
-        public static void CheckSchedule()
+        public static void CheckSchedule(bool force = false)
         {
-            if (!_config.Enabled) return;
-
-            // Reload config if file modified recently
-            if (File.Exists(ConfigPath) && File.GetLastWriteTime(ConfigPath) > _lastLoadedTime)
+            try
             {
-                LoadConfig();
-            }
-
-            DateTime now = DateTime.Now;
-            var todayEvents = GetTodayEvents(now);
-
-            // Find next or active event today where now < EndTime
-            var upcoming = todayEvents.Where(e => now < e.EndTime).OrderBy(e => e.StartTime).FirstOrDefault();
-
-            if (upcoming == null)
-            {
-                if (_isScheduleCharged)
+                // Reload config if file modified recently
+                if (File.Exists(ConfigPath) && File.GetLastWriteTime(ConfigPath) > _lastLoadedTime)
                 {
-                    _isScheduleCharged = false;
-                    _currentEventTitle = "";
-                    BatteryControl.SetBatteryChargeLimit();
-                    Logger.WriteLine("[ScheduleManager] No more events today. Restored normal charge limit (80%).");
+                    LoadConfig();
                 }
-                return;
-            }
 
-            DateTime leaveTime = upcoming.StartTime.AddMinutes(-_config.LeaveBufferMinutes);
-            DateTime prechargeTime = leaveTime.AddMinutes(-_config.PrechargeMinutes);
+                DateTime now = DateTime.Now;
+                var todayEvents = GetTodayEvents(now);
+                var sortedEvents = todayEvents.OrderBy(e => e.StartTime).ToList();
 
-            bool inPrechargeWindow = (now >= prechargeTime && now < leaveTime);
+                // Find active class (now >= Start && now < End) or next upcoming class (now < Start)
+                var currentClass = sortedEvents.FirstOrDefault(e => now >= e.StartTime && now < e.EndTime);
+                var nextClass = sortedEvents.FirstOrDefault(e => now < e.StartTime);
 
-            if (inPrechargeWindow)
-            {
-                bool onAc = SystemInformation.PowerStatus.PowerLineStatus == PowerLineStatus.Online;
-                if (onAc)
+                int baseCareLimit = AppConfig.Get("charge_limit", 80);
+                if (baseCareLimit < 40 || baseCareLimit > 85) baseCareLimit = 80;
+
+                int targetLimit = baseCareLimit;
+                string statusText;
+
+                if (!_config.Enabled)
                 {
-                    if (!BatteryControl.chargeFull)
+                    targetLimit = baseCareLimit;
+                    statusText = "课表调度: 未启用 (点击 [课表] 导入并开启)";
+                    _currentEventTitle = "";
+                    _inPrechargeWindow = false;
+                }
+                else if (currentClass != null)
+                {
+                    // In class! Strict battery care (80%)
+                    targetLimit = baseCareLimit;
+                    _currentEventTitle = currentClass.Title;
+                    _inPrechargeWindow = false;
+                    statusText = $"课表调度: 上课中 - {currentClass.Title} ({baseCareLimit}%保养中)";
+                }
+                else if (nextClass != null)
+                {
+                    // Next class today
+                    DateTime leaveTime = nextClass.StartTime.AddMinutes(-_config.LeaveBufferMinutes);
+                    DateTime prechargeTime = leaveTime.AddMinutes(-_config.PrechargeMinutes);
+
+                    if (now >= prechargeTime && now < leaveTime)
                     {
-                        _isScheduleCharged = true;
-                        _currentEventTitle = upcoming.Title;
-                        BatteryControl.SetBatteryLimitFull();
-                        Program.toast.RunToast($"[课表充电] 即将出门: {upcoming.Title}\n出发时间: {leaveTime:HH:mm}，已切换至100%充满", ToastIcon.Charger);
-                        Logger.WriteLine($"[ScheduleManager] In precharge window for '{upcoming.Title}'. Set battery limit to 100%. Leave time: {leaveTime:HH:mm}");
+                        // In pre-charge window! Target 100%
+                        targetLimit = 100;
+                        _currentEventTitle = nextClass.Title;
+                        _inPrechargeWindow = true;
+                        statusText = $"课表调度: [充满中] {nextClass.Title} ({nextClass.StartTime:HH:mm}上课, {leaveTime:HH:mm}出门)";
+                    }
+                    else if (now >= leaveTime && now < nextClass.StartTime)
+                    {
+                        // Departure buffer! Target 80%
+                        targetLimit = baseCareLimit;
+                        _currentEventTitle = nextClass.Title;
+                        _inPrechargeWindow = false;
+                        statusText = $"课表调度: 动身前往 - {nextClass.Title} ({nextClass.StartTime:HH:mm}上课)";
+                    }
+                    else
+                    {
+                        // Before pre-charge window! Target 80%
+                        targetLimit = baseCareLimit;
+                        _currentEventTitle = nextClass.Title;
+                        _inPrechargeWindow = false;
+                        statusText = $"课表调度: 下一节 {nextClass.Title} ({nextClass.StartTime:HH:mm}上课, {prechargeTime:HH:mm}开始充满)";
                     }
                 }
+                else
+                {
+                    // Finished all classes or no classes today! Target 80%
+                    targetLimit = baseCareLimit;
+                    _currentEventTitle = "";
+                    _inPrechargeWindow = false;
+                    statusText = sortedEvents.Count > 0
+                        ? $"课表调度: 今日已无后续课程 ({baseCareLimit}%保养中)"
+                        : $"课表调度: 今日无课程 ({baseCareLimit}%保养中)";
+                }
+
+                _cachedStatus = statusText;
+
+                // Level-triggered Ground Truth Enforcement
+                int currentEffectiveLimit = BatteryControl.chargeFull ? 100 : AppConfig.Get("charge_limit", 80);
+                if (currentEffectiveLimit != targetLimit || force)
+                {
+                    if (targetLimit == 100)
+                    {
+                        BatteryControl.SetBatteryLimitFull();
+                        Program.toast.RunToast($"[课表充电] 即将上课: {_currentEventTitle}\n已自动切换至 100% 满电准备", ToastIcon.Charger);
+                        Logger.WriteLine($"[ScheduleManager] State -> PRECHARGE (100%) for '{_currentEventTitle}'. Target: 100%");
+                    }
+                    else
+                    {
+                        BatteryControl.SetBatteryChargeLimit(targetLimit);
+                        Logger.WriteLine($"[ScheduleManager] State -> CARE ({targetLimit}%) active. Target: {targetLimit}%");
+                    }
+                }
+
+                // Push UI refresh to main settings form
+                if (Program.settingsForm != null && !Program.settingsForm.IsDisposed && Program.settingsForm.IsHandleCreated)
+                {
+                    Program.settingsForm.BeginInvoke(Program.settingsForm.VisualiseScheduleStatus);
+                    Program.settingsForm.BeginInvoke(Program.settingsForm.VisualiseBatteryTitleCurrent);
+                }
             }
-            else if (_isScheduleCharged && now >= leaveTime)
+            catch (Exception ex)
             {
-                // Past leave time
-                _isScheduleCharged = false;
-                _currentEventTitle = "";
-                BatteryControl.SetBatteryChargeLimit();
-                Logger.WriteLine($"[ScheduleManager] Reached departure time {leaveTime:HH:mm}. Restored normal battery limit.");
+                Logger.WriteLine($"[ScheduleManager] CheckSchedule error: {ex.Message}");
             }
         }
 
@@ -220,10 +259,11 @@ namespace GHelper.Schedule
 
         public static string GetStatusDetailed()
         {
-            if (!_config.Enabled) return "课表调度: 未启用 (点击 [课表] 导入并开启)";
-            var summary = GetNextEventSummary();
-            if (string.IsNullOrEmpty(summary)) return "课表调度: 已开启 (今日无日程，维持保养电量)";
-            return $"课表调度: {summary}";
+            if (string.IsNullOrEmpty(_cachedStatus))
+            {
+                CheckSchedule();
+            }
+            return _cachedStatus;
         }
 
         public static List<string> GetTodayEventsDisplayList()
@@ -241,27 +281,7 @@ namespace GHelper.Schedule
 
         public static string GetNextEventSummary()
         {
-            if (!_config.Enabled) return "";
-
-            DateTime now = DateTime.Now;
-            var todayEvents = GetTodayEvents(now);
-            var upcoming = todayEvents.Where(e => now < e.EndTime).OrderBy(e => e.StartTime).FirstOrDefault();
-
-            if (upcoming == null) return "今日无后续课程";
-
-            DateTime leaveTime = upcoming.StartTime.AddMinutes(-_config.LeaveBufferMinutes);
-            if (now < leaveTime.AddMinutes(-_config.PrechargeMinutes))
-            {
-                return $"{upcoming.Title} ({leaveTime:HH:mm}出门)";
-            }
-            else if (now < leaveTime)
-            {
-                return $"[充满中] {upcoming.Title} ({leaveTime:HH:mm}出门)";
-            }
-            else
-            {
-                return $"进行中: {upcoming.Title}";
-            }
+            return GetStatusDetailed();
         }
 
         private static List<CalendarEvent> GetTodayEvents(DateTime today)

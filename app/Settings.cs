@@ -252,6 +252,9 @@ namespace GHelper
             sliderBattery.ValueChanged += SliderBattery_ValueChanged;
             batteryTimer.Tick += (_, _) => { batteryTimer.Stop(); BatteryControl.SetBatteryChargeLimit(sliderBattery.Value); };
             if (AppConfig.IsChargeLimit6080()) sliderBattery.supportedValues = new() { 60, 65, 70, 75, 80, 100 };
+            sliderBattery.Value = AppConfig.Get("charge_limit", 80);
+            VisualiseBatteryTitle(sliderBattery.Value);
+            VisualiseScheduleStatus();
             labelBatteryTitle.DoubleClick += (_, _) => Schedule.ScheduleManager.OpenConfigFile();
 
             sensorTimer = new System.Timers.Timer(AppConfig.Get("sensor_timer", 1000));

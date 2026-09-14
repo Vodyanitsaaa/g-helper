@@ -356,9 +356,10 @@ namespace GHelper.Schedule
                 labelIcsPath.Text = "当前 ICS: " + path;
                 labelIcsPath.ForeColor = SystemColors.ControlText;
 
-                ScheduleManager.CheckSchedule();
+                ScheduleManager.CheckSchedule(force: true);
                 RefreshEventsList();
                 Program.settingsForm.VisualiseBatteryTitleCurrent();
+                Program.settingsForm.VisualiseScheduleStatus();
                 Program.toast.RunToast($"已关联课表: {Path.GetFileName(path)}", ToastIcon.Charger);
             }
             catch (Exception ex)
@@ -377,9 +378,10 @@ namespace GHelper.Schedule
                 cfg.PrechargeMinutes = (int)numPrecharge.Value;
                 cfg.LeaveBufferMinutes = (int)numLeave.Value;
                 ScheduleManager.SaveConfig(cfg);
-                ScheduleManager.CheckSchedule();
+                ScheduleManager.CheckSchedule(force: true);
                 RefreshEventsList();
                 Program.settingsForm.VisualiseBatteryTitleCurrent();
+                Program.settingsForm.VisualiseScheduleStatus();
                 Program.toast.RunToast("课程表与智能充电设置已更新！", ToastIcon.Charger);
                 Close();
             }
