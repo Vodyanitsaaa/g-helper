@@ -45,6 +45,7 @@ namespace GHelper
         public Updates? updatesForm;
         public Handheld? handheldForm;
         public OverlayConfig? overlayForm;
+        public Schedule.ScheduleForm? scheduleForm;
 
         static long lastRefresh;
         static long lastBatteryRefresh;
@@ -2061,9 +2062,22 @@ namespace GHelper
 
         private void ButtonSchedule_Click(object? sender, EventArgs e)
         {
-            using var form = new Schedule.ScheduleForm();
-            form.ShowDialog(this);
-            VisualiseScheduleStatus();
+            if (scheduleForm == null || scheduleForm.Text == "")
+            {
+                scheduleForm = new Schedule.ScheduleForm();
+                scheduleForm.FormClosed += (s, ev) => VisualiseScheduleStatus();
+                AddOwnedForm(scheduleForm);
+            }
+
+            if (scheduleForm.Visible)
+            {
+                scheduleForm.Close();
+            }
+            else
+            {
+                scheduleForm.Show();
+                scheduleForm.Activate();
+            }
         }
 
 

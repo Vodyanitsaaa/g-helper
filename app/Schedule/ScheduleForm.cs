@@ -22,19 +22,42 @@ namespace GHelper.Schedule
         private void InitializeComponent()
         {
             Text = "课表与智能充电设置 - ROG Flow X13";
-            ClientSize = new Size(540, 560);
+            ClientSize = new Size(550, 565);
             StartPosition = FormStartPosition.CenterParent;
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             MinimizeBox = false;
             ShowInTaskbar = false;
             Font = new Font("Segoe UI", 9F);
+            AllowDrop = true;
+
+            // Drag and drop support for .ics files
+            DragEnter += (_, e) =>
+            {
+                if (e.Data?.GetDataPresent(DataFormats.FileDrop) == true)
+                    e.Effect = DragDropEffects.Copy;
+            };
+            DragDrop += (_, e) =>
+            {
+                if (e.Data?.GetData(DataFormats.FileDrop) is string[] files && files.Length > 0)
+                {
+                    string file = files[0];
+                    if (file.EndsWith(".ics", StringComparison.OrdinalIgnoreCase))
+                    {
+                        LoadIcsFile(file);
+                    }
+                    else
+                    {
+                        MessageBox.Show(this, "请拖入 .ics 格式的课表日历文件", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    }
+                }
+            };
 
             // Header Section
             var panelTop = new Panel
             {
                 Location = new Point(20, 16),
-                Size = new Size(500, 50),
+                Size = new Size(510, 52),
                 BackColor = Color.Transparent
             };
 
@@ -62,7 +85,7 @@ namespace GHelper.Schedule
             checkEnabled.Text = " 启用智能课表感知与满电调度";
             checkEnabled.Font = new Font("Segoe UI", 9.25F, FontStyle.Bold);
             checkEnabled.Location = new Point(20, 74);
-            checkEnabled.Size = new Size(500, 30);
+            checkEnabled.Size = new Size(510, 30);
             checkEnabled.UseVisualStyleBackColor = true;
 
             // Timing Section Title
@@ -78,7 +101,7 @@ namespace GHelper.Schedule
             var tableTimes = new TableLayoutPanel
             {
                 Location = new Point(20, 138),
-                Size = new Size(500, 76),
+                Size = new Size(510, 76),
                 ColumnCount = 3,
                 RowCount = 2,
                 BackColor = Color.Transparent
@@ -148,7 +171,7 @@ namespace GHelper.Schedule
             // Data Source Section Title
             var labelFileTitle = new Label
             {
-                Text = "课程表数据源（支持 ICS 日历或 JSON 周排课）",
+                Text = "课程表数据源（支持 ICS 日历或 JSON 周排课，亦可直接拖拽文件入内）",
                 Font = new Font("Segoe UI", 9F, FontStyle.Bold),
                 Location = new Point(20, 224),
                 AutoSize = true
@@ -157,7 +180,7 @@ namespace GHelper.Schedule
             var panelFile = new Panel
             {
                 Location = new Point(20, 248),
-                Size = new Size(500, 74),
+                Size = new Size(510, 74),
                 BackColor = Color.Transparent
             };
 
@@ -181,7 +204,7 @@ namespace GHelper.Schedule
 
             labelIcsPath.Text = "当前使用: schedule.json 默认排课";
             labelIcsPath.Location = new Point(0, 44);
-            labelIcsPath.Size = new Size(500, 24);
+            labelIcsPath.Size = new Size(510, 24);
             labelIcsPath.ForeColor = SystemColors.GrayText;
 
             panelFile.Controls.AddRange(new Control[] { btnIcs, btnJson, labelIcsPath });
@@ -196,14 +219,14 @@ namespace GHelper.Schedule
             };
 
             listEvents.Location = new Point(20, 356);
-            listEvents.Size = new Size(500, 95);
+            listEvents.Size = new Size(510, 95);
             listEvents.Font = new Font("Segoe UI", 8.75F);
             listEvents.BorderStyle = BorderStyle.FixedSingle;
             listEvents.IntegralHeight = false;
 
             // Status indicator
             labelStatus.Location = new Point(20, 460);
-            labelStatus.Size = new Size(500, 24);
+            labelStatus.Size = new Size(510, 24);
             labelStatus.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
             labelStatus.ForeColor = colorEco;
 
@@ -211,7 +234,7 @@ namespace GHelper.Schedule
             var btnSave = new RButton
             {
                 Text = "保存并应用",
-                Location = new Point(285, 502),
+                Location = new Point(295, 502),
                 Size = new Size(115, 36)
             };
             btnSave.Click += BtnSave_Click;
@@ -219,7 +242,7 @@ namespace GHelper.Schedule
             var btnClose = new RButton
             {
                 Text = "关闭",
-                Location = new Point(410, 502),
+                Location = new Point(420, 502),
                 Size = new Size(110, 36),
                 Secondary = true
             };
@@ -279,56 +302,46 @@ namespace GHelper.Schedule
 
         private void BtnIcs_Click(object? sender, EventArgs e)
         {
-            string? selectedFile = null;
-
             try
             {
-                // Run OpenFileDialog in an isolated STA thread to prevent Windows Shell COM deadlocks
-                Thread t = new Thread(() =>
+                using var ofd = new OpenFileDialog
                 {
-                    using var ofd = new OpenFileDialog
-                    {
-                        Title = "选择课程表/日历 .ics 文件",
-                        Filter = "iCalendar 日历文件 (*.ics)|*.ics|所有文件 (*.*)|*.*",
-                        AutoUpgradeEnabled = false,
-                        RestoreDirectory = true
-                    };
+                    Title = "选择课程表/日历 .ics 文件",
+                    Filter = "iCalendar 日历文件 (*.ics)|*.ics|所有文件 (*.*)|*.*",
+                    RestoreDirectory = true
+                };
 
-                    if (ofd.ShowDialog() == DialogResult.OK)
-                    {
-                        selectedFile = ofd.FileName;
-                    }
-                });
-
-                t.SetApartmentState(ApartmentState.STA);
-                t.Start();
-                t.Join();
+                if (ofd.ShowDialog(this) == DialogResult.OK)
+                {
+                    LoadIcsFile(ofd.FileName);
+                }
             }
             catch (Exception ex)
             {
                 Logger.WriteLine($"[ScheduleForm] OpenFileDialog exception: {ex.Message}");
                 MessageBox.Show(this, $"打开文件选择窗口失败: {ex.Message}", "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
             }
+        }
 
-            if (!string.IsNullOrEmpty(selectedFile) && File.Exists(selectedFile))
+        private void LoadIcsFile(string path)
+        {
+            if (string.IsNullOrWhiteSpace(path) || !File.Exists(path)) return;
+
+            try
             {
-                try
-                {
-                    var cfg = ScheduleManager.GetConfig();
-                    cfg.IcsPath = selectedFile;
-                    ScheduleManager.SaveConfig(cfg);
-                    labelIcsPath.Text = "当前 ICS: " + selectedFile;
-                    labelIcsPath.ForeColor = SystemColors.ControlText;
+                var cfg = ScheduleManager.GetConfig();
+                cfg.IcsPath = path;
+                ScheduleManager.SaveConfig(cfg);
+                labelIcsPath.Text = "当前 ICS: " + path;
+                labelIcsPath.ForeColor = SystemColors.ControlText;
 
-                    RefreshEventsList();
-                    Program.toast.RunToast($"已关联课表文件: {Path.GetFileName(selectedFile)}", ToastIcon.Charger);
-                }
-                catch (Exception ex)
-                {
-                    Logger.WriteLine($"[ScheduleForm] Load selected ICS error: {ex.Message}");
-                    MessageBox.Show(this, $"解析所选课表文件失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                }
+                RefreshEventsList();
+                Program.toast.RunToast($"已关联课表: {Path.GetFileName(path)}", ToastIcon.Charger);
+            }
+            catch (Exception ex)
+            {
+                Logger.WriteLine($"[ScheduleForm] Load selected ICS error: {ex.Message}");
+                MessageBox.Show(this, $"解析所选课表文件失败: {ex.Message}", "错误", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
