@@ -1,4 +1,4 @@
-﻿using GHelper.UI;
+using GHelper.UI;
 
 namespace GHelper
 {
@@ -42,6 +42,8 @@ namespace GHelper
             labelMatrix = new Label();
             panelBattery = new Panel();
             buttonBatteryFull = new RButton();
+            buttonSchedule = new RButton();
+            labelScheduleStatus = new Label();
             sliderBattery = new Slider();
             panelBatteryTitle = new Panel();
             labelBattery = new Label();
@@ -58,6 +60,7 @@ namespace GHelper
             buttonSilent = new RButton();
             buttonBalanced = new RButton();
             buttonTurbo = new RButton();
+            buttonTablet = new RButton();
             buttonFans = new RButton();
             panelCPUTitle = new Panel();
             picturePerf = new PictureBox();
@@ -309,10 +312,13 @@ namespace GHelper
             labelMatrix.TabIndex = 40;
             labelMatrix.Text = "Anime Matrix";
             // 
+            // 
             // panelBattery
             // 
             panelBattery.AutoSize = true;
             panelBattery.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            panelBattery.Controls.Add(labelScheduleStatus);
+            panelBattery.Controls.Add(buttonSchedule);
             panelBattery.Controls.Add(buttonBatteryFull);
             panelBattery.Controls.Add(sliderBattery);
             panelBattery.Controls.Add(panelBatteryTitle);
@@ -321,7 +327,7 @@ namespace GHelper
             panelBattery.Margin = new Padding(0);
             panelBattery.Name = "panelBattery";
             panelBattery.Padding = new Padding(20, 15, 20, 0);
-            panelBattery.Size = new Size(827, 104);
+            panelBattery.Size = new Size(827, 134);
             panelBattery.TabIndex = 8;
             // 
             // buttonBatteryFull
@@ -335,15 +341,36 @@ namespace GHelper
             buttonBatteryFull.FlatStyle = FlatStyle.Flat;
             buttonBatteryFull.Font = new Font("Segoe UI", 7.125F, FontStyle.Bold);
             buttonBatteryFull.ForeColor = SystemColors.ControlDark;
-            buttonBatteryFull.Location = new Point(728, 62);
+            buttonBatteryFull.Location = new Point(730, 62);
             buttonBatteryFull.Borderless = true;
             buttonBatteryFull.Margin = new Padding(0);
             buttonBatteryFull.Name = "buttonBatteryFull";
             buttonBatteryFull.Secondary = true;
-            buttonBatteryFull.Size = new Size(73, 36);
+            buttonBatteryFull.Size = new Size(71, 36);
             buttonBatteryFull.TabIndex = 41;
             buttonBatteryFull.Text = "100%";
             buttonBatteryFull.UseVisualStyleBackColor = false;
+            // 
+            // buttonSchedule
+            // 
+            buttonSchedule.Activated = false;
+            buttonSchedule.Anchor = AnchorStyles.Top | AnchorStyles.Right;
+            buttonSchedule.BackColor = SystemColors.ControlLight;
+            buttonSchedule.BorderColor = Color.Transparent;
+            buttonSchedule.BorderRadius = 2;
+            buttonSchedule.FlatAppearance.BorderSize = 0;
+            buttonSchedule.FlatStyle = FlatStyle.Flat;
+            buttonSchedule.Font = new Font("Segoe UI", 7.5F, FontStyle.Bold);
+            buttonSchedule.ForeColor = SystemColors.ControlDark;
+            buttonSchedule.Location = new Point(648, 62);
+            buttonSchedule.Borderless = true;
+            buttonSchedule.Margin = new Padding(0);
+            buttonSchedule.Name = "buttonSchedule";
+            buttonSchedule.Secondary = true;
+            buttonSchedule.Size = new Size(78, 36);
+            buttonSchedule.TabIndex = 42;
+            buttonSchedule.Text = "📅 课表";
+            buttonSchedule.UseVisualStyleBackColor = false;
             // 
             // sliderBattery
             // 
@@ -353,11 +380,23 @@ namespace GHelper
             sliderBattery.Max = 100;
             sliderBattery.Min = 40;
             sliderBattery.Name = "sliderBattery";
-            sliderBattery.Size = new Size(707, 40);
+            sliderBattery.Size = new Size(620, 40);
             sliderBattery.Step = 5;
             sliderBattery.TabIndex = 20;
             sliderBattery.Text = "sliderBattery";
             sliderBattery.Value = 100;
+            // 
+            // labelScheduleStatus
+            // 
+            labelScheduleStatus.Anchor = AnchorStyles.Top | AnchorStyles.Left | AnchorStyles.Right;
+            labelScheduleStatus.Font = new Font("Segoe UI", 8.25F, FontStyle.Regular);
+            labelScheduleStatus.ForeColor = SystemColors.GrayText;
+            labelScheduleStatus.Location = new Point(24, 102);
+            labelScheduleStatus.Margin = new Padding(4, 0, 4, 8);
+            labelScheduleStatus.Name = "labelScheduleStatus";
+            labelScheduleStatus.Size = new Size(777, 24);
+            labelScheduleStatus.TabIndex = 43;
+            labelScheduleStatus.Text = "课表调度: 加载中...";
             // 
             // panelBatteryTitle
             // 
@@ -531,15 +570,17 @@ namespace GHelper
             // 
             tablePerf.AutoSize = true;
             tablePerf.AutoSizeMode = AutoSizeMode.GrowAndShrink;
-            tablePerf.ColumnCount = 4;
-            tablePerf.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-            tablePerf.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-            tablePerf.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
-            tablePerf.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 25F));
+            tablePerf.ColumnCount = 5;
+            tablePerf.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+            tablePerf.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+            tablePerf.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+            tablePerf.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
+            tablePerf.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 20F));
             tablePerf.Controls.Add(buttonSilent, 0, 0);
             tablePerf.Controls.Add(buttonBalanced, 1, 0);
             tablePerf.Controls.Add(buttonTurbo, 2, 0);
-            tablePerf.Controls.Add(buttonFans, 3, 0);
+            tablePerf.Controls.Add(buttonTablet, 3, 0);
+            tablePerf.Controls.Add(buttonFans, 4, 0);
             tablePerf.Dock = DockStyle.Top;
             tablePerf.Location = new Point(20, 60);
             tablePerf.Margin = new Padding(8, 4, 8, 4);
@@ -566,7 +607,7 @@ namespace GHelper
             buttonSilent.Margin = new Padding(4);
             buttonSilent.Name = "buttonSilent";
             buttonSilent.Secondary = false;
-            buttonSilent.Size = new Size(188, 120);
+            buttonSilent.Size = new Size(150, 120);
             buttonSilent.TabIndex = 1;
             buttonSilent.Text = "&Silent";
             buttonSilent.TextImageRelation = TextImageRelation.ImageAboveText;
@@ -584,11 +625,11 @@ namespace GHelper
             buttonBalanced.ForeColor = SystemColors.ControlText;
             buttonBalanced.Image = Properties.Resources.icons8_fiat_500_48;
             buttonBalanced.ImageAlign = ContentAlignment.BottomCenter;
-            buttonBalanced.Location = new Point(200, 4);
+            buttonBalanced.Location = new Point(160, 4);
             buttonBalanced.Margin = new Padding(4);
             buttonBalanced.Name = "buttonBalanced";
             buttonBalanced.Secondary = false;
-            buttonBalanced.Size = new Size(188, 120);
+            buttonBalanced.Size = new Size(150, 120);
             buttonBalanced.TabIndex = 1;
             buttonBalanced.Text = "&Balanced";
             buttonBalanced.TextImageRelation = TextImageRelation.ImageAboveText;
@@ -606,15 +647,37 @@ namespace GHelper
             buttonTurbo.ForeColor = SystemColors.ControlText;
             buttonTurbo.Image = Properties.Resources.icons8_rocket_48;
             buttonTurbo.ImageAlign = ContentAlignment.BottomCenter;
-            buttonTurbo.Location = new Point(396, 4);
+            buttonTurbo.Location = new Point(316, 4);
             buttonTurbo.Margin = new Padding(4);
             buttonTurbo.Name = "buttonTurbo";
             buttonTurbo.Secondary = false;
-            buttonTurbo.Size = new Size(188, 120);
+            buttonTurbo.Size = new Size(150, 120);
             buttonTurbo.TabIndex = 2;
             buttonTurbo.Text = "&Turbo";
             buttonTurbo.TextImageRelation = TextImageRelation.ImageAboveText;
             buttonTurbo.UseVisualStyleBackColor = false;
+            // 
+            // buttonTablet
+            // 
+            buttonTablet.Activated = false;
+            buttonTablet.BackColor = SystemColors.ControlLightLight;
+            buttonTablet.BorderColor = Color.Transparent;
+            buttonTablet.BorderRadius = 5;
+            buttonTablet.Dock = DockStyle.Fill;
+            buttonTablet.FlatAppearance.BorderSize = 0;
+            buttonTablet.FlatStyle = FlatStyle.Flat;
+            buttonTablet.ForeColor = SystemColors.ControlText;
+            buttonTablet.Image = Properties.Resources.icons8_natural_user_interface_48;
+            buttonTablet.ImageAlign = ContentAlignment.BottomCenter;
+            buttonTablet.Location = new Point(472, 4);
+            buttonTablet.Margin = new Padding(4);
+            buttonTablet.Name = "buttonTablet";
+            buttonTablet.Secondary = false;
+            buttonTablet.Size = new Size(150, 120);
+            buttonTablet.TabIndex = 3;
+            buttonTablet.Text = "平板模式";
+            buttonTablet.TextImageRelation = TextImageRelation.ImageAboveText;
+            buttonTablet.UseVisualStyleBackColor = false;
             // 
             // buttonFans
             // 
@@ -627,12 +690,12 @@ namespace GHelper
             buttonFans.FlatStyle = FlatStyle.Flat;
             buttonFans.Image = Properties.Resources.icons8_fan_48;
             buttonFans.ImageAlign = ContentAlignment.BottomCenter;
-            buttonFans.Location = new Point(592, 4);
+            buttonFans.Location = new Point(628, 4);
             buttonFans.Margin = new Padding(4);
             buttonFans.Name = "buttonFans";
             buttonFans.Secondary = true;
-            buttonFans.Size = new Size(191, 120);
-            buttonFans.TabIndex = 3;
+            buttonFans.Size = new Size(155, 120);
+            buttonFans.TabIndex = 4;
             buttonFans.Text = "&Fans + Power";
             buttonFans.TextImageRelation = TextImageRelation.ImageAboveText;
             buttonFans.UseVisualStyleBackColor = false;
@@ -2167,6 +2230,7 @@ namespace GHelper
         private RButton buttonTurbo;
         private RButton buttonBalanced;
         private RButton buttonSilent;
+        private RButton buttonTablet;
         private Panel panelGPU;
         private TableLayoutPanel tableGPU;
         private RButton buttonXGM;
@@ -2229,6 +2293,8 @@ namespace GHelper
         private RButton buttonFnLock;
         private RButton buttonOverlay;
         private RButton buttonBatteryFull;
+        private RButton buttonSchedule;
+        private Label labelScheduleStatus;
         private Panel panelAlly;
         private TableLayoutPanel tableLayoutAlly;
         private RButton buttonControllerMode;

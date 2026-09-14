@@ -73,6 +73,7 @@ namespace GHelper
             buttonSilent.Text = Properties.Strings.Silent;
             buttonBalanced.Text = Properties.Strings.Balanced;
             buttonTurbo.Text = Properties.Strings.Turbo;
+            buttonTablet.Text = "平板模式";
             buttonFans.Text = Properties.Strings.FansPower;
 
             buttonEco.Text = Properties.Strings.EcoMode;
@@ -114,7 +115,9 @@ namespace GHelper
             buttonSilent.AccessibleName = Properties.Strings.Silent;
             buttonBalanced.AccessibleName = Properties.Strings.Balanced;
             buttonTurbo.AccessibleName = Properties.Strings.Turbo;
+            buttonTablet.AccessibleName = "平板模式";
             buttonFans.AccessibleName = Properties.Strings.FansAndPower;
+            buttonSchedule.AccessibleName = "课表与智能充电设置";
             panelGPU.AccessibleName = Properties.Strings.GPUMode;
             buttonEco.AccessibleName = Properties.Strings.EcoMode;
             buttonStandard.AccessibleName = Properties.Strings.StandardMode;
@@ -138,6 +141,7 @@ namespace GHelper
             buttonSilent.BorderColor = colorEco;
             buttonBalanced.BorderColor = colorStandard;
             buttonTurbo.BorderColor = colorTurbo;
+            buttonTablet.BorderColor = colorEco;
             buttonFans.BorderColor = colorCustom;
 
             buttonEco.BorderColor = colorEco;
@@ -166,6 +170,8 @@ namespace GHelper
             buttonSilent.Click += ButtonSilent_Click;
             buttonBalanced.Click += ButtonBalanced_Click;
             buttonTurbo.Click += ButtonTurbo_Click;
+            buttonTablet.Click += ButtonTablet_Click;
+            buttonSchedule.Click += ButtonSchedule_Click;
 
             buttonEco.Click += ButtonEco_Click;
             buttonStandard.Click += ButtonStandard_Click;
@@ -1754,6 +1760,7 @@ namespace GHelper
             buttonSilent.Activated = false;
             buttonBalanced.Activated = false;
             buttonTurbo.Activated = false;
+            buttonTablet.Activated = false;
             buttonFans.Activated = false;
 
             switch (mode)
@@ -1766,6 +1773,9 @@ namespace GHelper
                     break;
                 case AsusACPI.PerformanceBalanced:
                     buttonBalanced.Activated = true;
+                    break;
+                case Modes.Tablet:
+                    buttonTablet.Activated = true;
                     break;
                 default:
                     buttonFans.Activated = true;
@@ -2039,6 +2049,18 @@ namespace GHelper
             Program.modeControl.SetPerformanceMode(AsusACPI.PerformanceTurbo);
         }
 
+        private void ButtonTablet_Click(object? sender, EventArgs e)
+        {
+            Program.modeControl.SetPerformanceMode(Modes.Tablet);
+        }
+
+        private void ButtonSchedule_Click(object? sender, EventArgs e)
+        {
+            using var form = new Schedule.ScheduleForm();
+            form.ShowDialog(this);
+            VisualiseScheduleStatus();
+        }
+
 
         public void ButtonEnabled(RButton but, bool enabled)
         {
@@ -2070,6 +2092,7 @@ namespace GHelper
             //sliderBattery.AccessibilityObject.Select(AccessibleSelection.TakeFocus);
 
             VisualiseBatteryFull();
+            VisualiseScheduleStatus();
         }
 
         public void VisualiseBatteryFull()
@@ -2087,7 +2110,29 @@ namespace GHelper
                 buttonBatteryFull.ForeColor = SystemColors.ControlDark;
                 buttonBatteryFull.AccessibleName = Properties.Strings.BatteryChargeLimit + "100% off";
             }
+        }
 
+        public void VisualiseScheduleStatus()
+        {
+            if (InvokeRequired) { Invoke(VisualiseScheduleStatus); return; }
+            if (buttonSchedule == null || labelScheduleStatus == null) return;
+
+            if (Schedule.ScheduleManager.IsEnabled)
+            {
+                buttonSchedule.BackColor = colorEco;
+                buttonSchedule.ForeColor = SystemColors.ControlLightLight;
+            }
+            else
+            {
+                buttonSchedule.BackColor = buttonSecond;
+                buttonSchedule.ForeColor = SystemColors.ControlDark;
+            }
+            labelScheduleStatus.Text = Schedule.ScheduleManager.GetStatusDetailed();
+        }
+
+        public void VisualiseBatteryTitleCurrent()
+        {
+            VisualiseBattery(AppConfig.Get("charge_limit", 80));
         }
 
 

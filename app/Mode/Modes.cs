@@ -41,7 +41,7 @@ namespace GHelper.Mode
 
         public static void InitTabletMode()
         {
-            if (AppConfig.HasTabletMode() && !Exists(Tablet))
+            if (!Exists(Tablet))
             {
                 AppConfig.Set("mode_base_" + Tablet, AsusACPI.PerformanceSilent);
                 AppConfig.Set("mode_name_" + Tablet, "平板模式");

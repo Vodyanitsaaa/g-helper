@@ -210,6 +210,35 @@ namespace GHelper.Schedule
             }
         }
 
+        public static ScheduleConfig GetConfig() => _config;
+
+        public static void SaveConfig(ScheduleConfig config)
+        {
+            _config = config;
+            SaveConfig();
+        }
+
+        public static string GetStatusDetailed()
+        {
+            if (!_config.Enabled) return "课表调度: 未启用 (点击 [📅 课表] 导入并开启)";
+            var summary = GetNextEventSummary();
+            if (string.IsNullOrEmpty(summary)) return "课表调度: 已开启 (今日无日程，维持保养电量)";
+            return $"课表调度: {summary}";
+        }
+
+        public static List<string> GetTodayEventsDisplayList()
+        {
+            var list = new List<string>();
+            var events = GetTodayEvents(DateTime.Now).OrderBy(e => e.StartTime).ToList();
+            foreach (var ev in events)
+            {
+                DateTime leaveTime = ev.StartTime.AddMinutes(-_config.LeaveBufferMinutes);
+                DateTime prechargeTime = leaveTime.AddMinutes(-_config.PrechargeMinutes);
+                list.Add($"{ev.StartTime:HH:mm} - {ev.EndTime:HH:mm} | {ev.Title} ({leaveTime:HH:mm}出发, {prechargeTime:HH:mm}开始充至100%)");
+            }
+            return list;
+        }
+
         public static string GetNextEventSummary()
         {
             if (!_config.Enabled) return "";
