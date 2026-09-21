@@ -42,6 +42,29 @@ namespace GHelper.Schedule
         private static bool _inPrechargeWindow = false;
         private static DateTime _lastLoadedTime = DateTime.MinValue;
 
+        public static readonly TimeZoneInfo ChinaTimeZone = InitChinaTimeZone();
+
+        private static TimeZoneInfo InitChinaTimeZone()
+        {
+            try
+            {
+                return TimeZoneInfo.FindSystemTimeZoneById("China Standard Time");
+            }
+            catch
+            {
+                try
+                {
+                    return TimeZoneInfo.FindSystemTimeZoneById("Asia/Shanghai");
+                }
+                catch
+                {
+                    return TimeZoneInfo.CreateCustomTimeZone("UTC+08", TimeSpan.FromHours(8), "China Standard Time", "China Standard Time");
+                }
+            }
+        }
+
+        public static DateTime Now => TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, ChinaTimeZone);
+
         public static bool IsEnabled => _config.Enabled;
         public static string CurrentEventTitle => _currentEventTitle;
         public static bool IsScheduleCharging => _inPrechargeWindow;
@@ -56,8 +79,9 @@ namespace GHelper.Schedule
             _timer.Start();
 
             CheckSchedule(force: true);
-            Logger.WriteLine($"[ScheduleManager] Initialized. Enabled: {_config.Enabled}, Precharge: {_config.PrechargeMinutes}m, LeaveBuffer: {_config.LeaveBufferMinutes}m");
+            Logger.WriteLine($"[ScheduleManager] Initialized. Pinned TimeZone: UTC+8 (China Standard Time), Current China Time: {Now:yyyy-MM-dd HH:mm:ss}, Enabled: {_config.Enabled}, Precharge: {_config.PrechargeMinutes}m, LeaveBuffer: {_config.LeaveBufferMinutes}m");
         }
+
 
         public static void LoadConfig()
         {
@@ -146,7 +170,7 @@ namespace GHelper.Schedule
                     LoadConfig();
                 }
 
-                DateTime now = DateTime.Now;
+                DateTime now = Now;
                 var todayEvents = GetTodayEvents(now);
                 var sortedEvents = todayEvents.OrderBy(e => e.StartTime).ToList();
 
@@ -173,7 +197,7 @@ namespace GHelper.Schedule
                     targetLimit = baseCareLimit;
                     _currentEventTitle = currentClass.Title;
                     _inPrechargeWindow = false;
-                    statusText = $"课表调度: 上课中 - {currentClass.Title} ({baseCareLimit}%保养中)";
+                    statusText = $"课表调度: 上课中 - {currentClass.Title} ({baseCareLimit}%保养中 | UTC+8)";
                 }
                 else if (nextClass != null)
                 {
@@ -187,7 +211,7 @@ namespace GHelper.Schedule
                         targetLimit = 100;
                         _currentEventTitle = nextClass.Title;
                         _inPrechargeWindow = true;
-                        statusText = $"课表调度: [充满中] {nextClass.Title} ({nextClass.StartTime:HH:mm}上课, {leaveTime:HH:mm}出门)";
+                        statusText = $"课表调度: [充满中] {nextClass.Title} ({nextClass.StartTime:HH:mm}上课, {leaveTime:HH:mm}出门 | UTC+8)";
                     }
                     else if (now >= leaveTime && now < nextClass.StartTime)
                     {
@@ -195,7 +219,7 @@ namespace GHelper.Schedule
                         targetLimit = baseCareLimit;
                         _currentEventTitle = nextClass.Title;
                         _inPrechargeWindow = false;
-                        statusText = $"课表调度: 动身前往 - {nextClass.Title} ({nextClass.StartTime:HH:mm}上课)";
+                        statusText = $"课表调度: 动身前往 - {nextClass.Title} ({nextClass.StartTime:HH:mm}上课 | UTC+8)";
                     }
                     else
                     {
@@ -203,7 +227,7 @@ namespace GHelper.Schedule
                         targetLimit = baseCareLimit;
                         _currentEventTitle = nextClass.Title;
                         _inPrechargeWindow = false;
-                        statusText = $"课表调度: 下一节 {nextClass.Title} ({nextClass.StartTime:HH:mm}上课, {prechargeTime:HH:mm}开始充满)";
+                        statusText = $"课表调度: 下一节 {nextClass.Title} ({nextClass.StartTime:HH:mm}上课, {prechargeTime:HH:mm}开始充满 | UTC+8)";
                     }
                 }
                 else
@@ -213,8 +237,8 @@ namespace GHelper.Schedule
                     _currentEventTitle = "";
                     _inPrechargeWindow = false;
                     statusText = sortedEvents.Count > 0
-                        ? $"课表调度: 今日已无后续课程 ({baseCareLimit}%保养中)"
-                        : $"课表调度: 今日无课程 ({baseCareLimit}%保养中)";
+                        ? $"课表调度: 今日已无后续课程 ({baseCareLimit}%保养中 | UTC+8)"
+                        : $"课表调度: 今日无课程 ({baseCareLimit}%保养中 | UTC+8)";
                 }
 
                 _cachedStatus = statusText;
@@ -269,7 +293,7 @@ namespace GHelper.Schedule
         public static List<string> GetTodayEventsDisplayList()
         {
             var list = new List<string>();
-            var events = GetTodayEvents(DateTime.Now).OrderBy(e => e.StartTime).ToList();
+            var events = GetTodayEvents(Now).OrderBy(e => e.StartTime).ToList();
             foreach (var ev in events)
             {
                 DateTime leaveTime = ev.StartTime.AddMinutes(-_config.LeaveBufferMinutes);
@@ -510,22 +534,39 @@ namespace GHelper.Schedule
             dt = DateTime.MinValue;
             if (string.IsNullOrWhiteSpace(str)) return false;
 
-            // Format: YYYYMMDDTHHMMSS or YYYYMMDDTHHMMSSZ or YYYYMMDD
             str = str.Trim();
-            if (str.EndsWith("Z", StringComparison.OrdinalIgnoreCase)) str = str[..^1];
+            bool isUtc = str.EndsWith("Z", StringComparison.OrdinalIgnoreCase);
+            string raw = isUtc ? str[..^1] : str;
 
-            if (str.Length >= 15 && str.Contains('T'))
+            if (raw.Length >= 15 && raw.Contains('T'))
             {
-                if (DateTime.TryParseExact(str[..15], "yyyyMMdd'T'HHmmss", null, System.Globalization.DateTimeStyles.AssumeLocal, out dt))
+                if (DateTime.TryParseExact(raw[..15], "yyyyMMdd'T'HHmmss", null, System.Globalization.DateTimeStyles.None, out dt))
+                {
+                    if (isUtc)
+                    {
+                        dt = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(dt, DateTimeKind.Utc), ChinaTimeZone);
+                    }
                     return true;
+                }
             }
-            else if (str.Length >= 8)
+            else if (raw.Length >= 8)
             {
-                if (DateTime.TryParseExact(str[..8], "yyyyMMdd", null, System.Globalization.DateTimeStyles.AssumeLocal, out dt))
+                if (DateTime.TryParseExact(raw[..8], "yyyyMMdd", null, System.Globalization.DateTimeStyles.None, out dt))
+                {
                     return true;
+                }
             }
 
-            return DateTime.TryParse(str, out dt);
+            if (DateTime.TryParse(raw, null, System.Globalization.DateTimeStyles.None, out dt))
+            {
+                if (isUtc)
+                {
+                    dt = TimeZoneInfo.ConvertTimeFromUtc(DateTime.SpecifyKind(dt, DateTimeKind.Utc), ChinaTimeZone);
+                }
+                return true;
+            }
+
+            return false;
         }
     }
 }

@@ -21,7 +21,7 @@ namespace GHelper.Schedule
 
         private void InitializeComponent()
         {
-            Text = "课表与智能充电设置 - ROG Flow X13";
+            Text = "课表与智能充电设置 - ROG Flow X13 (时区锁死: UTC+8 北京时间)";
             ClientSize = new Size(550, 565);
             StartPosition = FormStartPosition.CenterScreen;
             FormBorderStyle = FormBorderStyle.FixedDialog;
@@ -76,7 +76,7 @@ namespace GHelper.Schedule
 
             var labelSubtitle = new Label
             {
-                Text = "上课动身前自动充至 100%，离电出发后自动切回 80% 保养上限",
+                Text = "上课动身前自动充至 100%，离电出发后自动切回 80% 保养上限（时区锁死: UTC+8 北京时间）",
                 Font = new Font("Segoe UI", 8.25F),
                 ForeColor = SystemColors.GrayText,
                 AutoSize = true,
@@ -303,7 +303,7 @@ namespace GHelper.Schedule
                 var list = ScheduleManager.GetTodayEventsDisplayList();
                 if (list.Count == 0)
                 {
-                    listEvents.Items.Add("今日暂无待上课程（维持 80% 电池保养）");
+                    listEvents.Items.Add($"今日 ({ScheduleManager.Now:MM-dd dddd}) 暂无待上课程（维持 80% 电池保养 | 北京时间）");
                 }
                 else
                 {
@@ -312,7 +312,7 @@ namespace GHelper.Schedule
                         listEvents.Items.Add(item);
                     }
                 }
-                labelStatus.Text = ScheduleManager.GetStatusDetailed();
+                labelStatus.Text = ScheduleManager.GetStatusDetailed() + $" (北京时间: {ScheduleManager.Now:HH:mm})";
             }
             catch (Exception ex)
             {
